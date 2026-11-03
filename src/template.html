@@ -124,8 +124,8 @@ textarea.sharebox { width: 100%; font: 14px/1.4 ui-monospace, monospace; border-
 .key:active rect, .key.pressed rect { fill: var(--key-edge); }
 .answer { fill: none; stroke: var(--ink); stroke-width: 13; stroke-linecap: round; stroke-linejoin: round; opacity: .5; pointer-events: none; }
 .answer-loop { fill: none; stroke: var(--ink); stroke-width: 11; opacity: .5; pointer-events: none; }
-.startdot { fill: var(--ink); opacity: .7; pointer-events: none; }
-.endcap { fill: var(--ink); opacity: .7; pointer-events: none; }
+.startring { fill: none; stroke: var(--ink); stroke-width: 7; pointer-events: none; }
+.endcap { fill: var(--ink); stroke: var(--key); stroke-width: 4; paint-order: stroke; pointer-events: none; }
 .knot { fill: var(--paper); stroke: var(--ink); stroke-width: 5; pointer-events: none; }
 .trace { fill: none; stroke: var(--trace); stroke-width: 6; stroke-dasharray: 2 14; stroke-linecap: round; stroke-linejoin: round; opacity: .75; pointer-events: none; }
 .trace-loop { fill: none; stroke: var(--trace); stroke-width: 5; stroke-dasharray: 2 10; stroke-linecap: round; opacity: .75; pointer-events: none; }
@@ -149,14 +149,15 @@ textarea.sharebox { width: 100%; font: 14px/1.4 ui-monospace, monospace; border-
   </header>
 
   <section class="howto" id="howto">
-    <p><strong>The blue line is today's word, swiped across the keyboard.</strong> It starts at the dot and ends at the arrow. Guess the 5-letter word in 6 tries.</p>
+    <p><strong>The blue line is today's word, swiped across the keyboard.</strong> It starts at the circled key and ends at the arrow. Guess the 5-letter word in 6 tries.</p>
+    <p><strong>The line only bends at letters in the word.</strong> On a straight stretch it slides over keys that aren't in it, just like a real swipe.</p>
     <p>Tap keys to type. Your guess draws its own dotted line, so you can match the shape.</p>
     <div class="legend">
       <span><i class="chip" style="background:var(--good)"></i>Right stroke, right spot</span>
       <span><i class="chip" style="background:var(--near)"></i>Stroke is in the word elsewhere</span>
       <span><i class="chip" style="background:var(--miss)"></i>Not in the word</span>
     </div>
-    <p style="color:var(--muted);font-size:14px">The bars between your letters score each stroke (letter to letter). A loop means a double letter. Miss three times and the turning points appear.</p>
+    <p style="color:var(--muted);font-size:14px">Any 5 letters count as a guess. The bars between your letters score each stroke (letter to letter). A loop means a double letter. Miss three times and the turning points appear.</p>
     <button class="btn" id="gotIt" type="button">Got it</button>
   </section>
 
@@ -264,6 +265,7 @@ function buildKeyboard() {
   layer.answer = el("g", {}, kb);
   layer.trace = el("g", {}, kb);
   const labels = el("g", { "aria-hidden": "true" }, kb);
+  layer.marks = el("g", { "aria-hidden": "true" }, kb);
   const addKey = (label, x, y, w, val, fn) => {
     const g = el("g", { class: "key" + (fn ? " fn" : ""), tabindex: "0", role: "button", "aria-label": fn ? label : val.toUpperCase(), "data-k": val }, keys);
     el("rect", { x: x + GAP / 2, y, width: w - GAP, height: KH, rx: 16 }, g);
@@ -285,11 +287,14 @@ function drawAnswer(animate) {
   const path = el("path", { d, class: "answer" }, g);
   loops.forEach(p => el("circle", { cx: p.x, cy: p.y - 30, r: 26, class: "answer-loop" }, g));
   const a = pts[0], b = pts[pts.length - 1], prev = pts[pts.length - 2] || a;
-  el("circle", { cx: a.x, cy: a.y, r: 18, class: "startdot" }, g);
-  // arrowhead at the end, pointing along the last stroke
+  const m = layer.marks; m.innerHTML = "";
+  // start: a ring around the first key, drawn above the letters
+  el("rect", { x: a.x - KW / 2 + 2, y: a.y - KH / 2 - 2, width: KW - 4, height: KH + 4, rx: 20, class: "startring" }, m);
+  // end: an arrowhead on the last stroke, just short of the final key's letter
   const ang = Math.atan2(b.y - prev.y, b.x - prev.x);
-  const tip = (r, da) => `${(b.x + Math.cos(ang + da) * r).toFixed(1)},${(b.y + Math.sin(ang + da) * r).toFixed(1)}`;
-  el("polygon", { points: `${tip(26, 0)} ${tip(22, 2.4)} ${tip(22, -2.4)}`, class: "endcap" }, g);
+  const back = pts.length > 1 ? 44 : 0, cx = b.x - Math.cos(ang) * back, cy = b.y - Math.sin(ang) * back;
+  const tip = (r, da) => `${(cx + Math.cos(ang + da) * r).toFixed(1)},${(cy + Math.sin(ang + da) * r).toFixed(1)}`;
+  if (pts.length > 1) el("polygon", { points: `${tip(30, 0)} ${tip(26, 2.5)} ${tip(26, -2.5)}`, class: "endcap" }, m);
   const misses = S.guesses.filter(x => x !== S.answer).length;
   if (misses >= 3 || S.over) [...S.answer].forEach((c, i) => { if (i > 0 && S.answer[i - 1] === c) return; el("circle", { cx: POS[c].x, cy: POS[c].y, r: 11, class: "knot" }, g); });
   if (animate && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -354,7 +359,7 @@ function render(opts = {}) {
   renderResult();
 }
 
-const VERSION = "v6";
+const VERSION = "v8";
 let lastError = "";
 function safe(fn) { try { fn(); } catch (err) { showError(err); } }
 function showError(err) {
@@ -378,8 +383,9 @@ function press(k) {
 }
 function submit() {
   if (S.cur.length < LEN) { toast("Type 5 letters, then Enter."); render({ shake: S.guesses.length }); return; }
-  if (!VALID.has(S.cur)) { toast(`${S.cur.toUpperCase()} isn't in the word list. Tap ⌫ to fix it.`); render({ shake: S.guesses.length }); return; }
+  const realWord = VALID.has(S.cur);
   S.guesses.push(S.cur); S.cur = "";
+  if (!realWord) toast(`Not a word, but it counts as a guess.`);
   if (S.guesses[S.guesses.length - 1] === S.answer) { S.over = true; S.won = true; }
   else if (S.guesses.length >= MAXG) { S.over = true; }
   if (S.over && S.mode === "daily") {
