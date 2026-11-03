@@ -108,14 +108,15 @@ textarea.sharebox { width: 100%; font: 14px/1.4 ui-monospace, monospace; border-
 .board { margin-top: auto; user-select: none; -webkit-user-select: none; }
 .board svg { width: 100%; height: auto; display: block; overflow: visible; }
 .key rect { fill: var(--key); stroke: var(--key-edge); stroke-width: 2; }
-.key text { fill: var(--text); font: 700 40px var(--body); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
-.key.fn text { font-size: 28px; }
+.label { fill: var(--text); font: 700 42px var(--body); text-anchor: middle; dominant-baseline: central; pointer-events: none;
+  stroke: var(--key); stroke-width: 9px; stroke-linejoin: round; paint-order: stroke; }
+.label.fn { font-size: 28px; }
 .key { cursor: pointer; }
 .key:active rect, .key.pressed rect { fill: var(--key-edge); }
-.answer { fill: none; stroke: var(--ink); stroke-width: 15; stroke-linecap: round; stroke-linejoin: round; opacity: .88; pointer-events: none; }
-.answer-loop { fill: none; stroke: var(--ink); stroke-width: 12; opacity: .88; pointer-events: none; }
-.startdot { fill: var(--ink); pointer-events: none; }
-.endcap { fill: var(--ink); pointer-events: none; }
+.answer { fill: none; stroke: var(--ink); stroke-width: 13; stroke-linecap: round; stroke-linejoin: round; opacity: .5; pointer-events: none; }
+.answer-loop { fill: none; stroke: var(--ink); stroke-width: 11; opacity: .5; pointer-events: none; }
+.startdot { fill: var(--ink); opacity: .7; pointer-events: none; }
+.endcap { fill: var(--ink); opacity: .7; pointer-events: none; }
 .knot { fill: var(--paper); stroke: var(--ink); stroke-width: 5; pointer-events: none; }
 .trace { fill: none; stroke: var(--trace); stroke-width: 6; stroke-dasharray: 2 14; stroke-linecap: round; stroke-linejoin: round; opacity: .75; pointer-events: none; }
 .trace-loop { fill: none; stroke: var(--trace); stroke-width: 5; stroke-dasharray: 2 10; stroke-linecap: round; opacity: .75; pointer-events: none; }
@@ -250,18 +251,19 @@ let layer = {};
 function buildKeyboard() {
   const kb = $("kb"); kb.innerHTML = "";
   const keys = el("g", {}, kb);
+  layer.answer = el("g", {}, kb);
+  layer.trace = el("g", {}, kb);
+  const labels = el("g", { "aria-hidden": "true" }, kb);
   const addKey = (label, x, y, w, val, fn) => {
     const g = el("g", { class: "key" + (fn ? " fn" : ""), tabindex: "0", role: "button", "aria-label": fn ? label : val.toUpperCase(), "data-k": val }, keys);
     el("rect", { x: x + GAP / 2, y, width: w - GAP, height: KH, rx: 16 }, g);
-    const t = el("text", { x: x + w / 2, y: y + KH / 2 }, g); t.textContent = label;
+    const t = el("text", { x: x + w / 2, y: y + KH / 2, class: "label" + (fn ? " fn" : "") }, labels); t.textContent = label;
     g.addEventListener("pointerdown", e => { e.preventDefault(); press(val); g.classList.add("pressed"); setTimeout(() => g.classList.remove("pressed"), 110); });
     g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); press(val); } });
   };
   ROWS.forEach((r, ri) => [...r].forEach((c, ci) => addKey(c.toUpperCase(), ROWX[ri] + ci * KW, ROWY[ri], KW, c)));
   addKey("Enter", 0, ROWY[2], 150, "enter", true);
   addKey("⌫", 850, ROWY[2], 150, "back", true);
-  layer.answer = el("g", {}, kb);
-  layer.trace = el("g", {}, kb);
 }
 
 function drawAnswer(animate) {
