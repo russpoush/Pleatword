@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Squiggle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout idea: one column, phone-first. Guess rows on top, the keyboard is both the puzzle board and the input. */
+  --paper: #eef0f4;
+  --key: #ffffff;
+  --key-edge: #cfd4dd;
+  --text: #1b1e26;
+  --muted: #6a7180;
+  --ink: #2b3bff;
+  --trace: #1b1e26;
+  --good: #1f9d55;
+  --near: #d99a00;
+  --miss: #a3a9b4;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #13151b; --key: #232731; --key-edge: #323846; --text: #eceef3; --muted: #9098a8;
+    --ink: #8c97ff; --trace: #eceef3; --good: #39b56e; --near: #e8b02a; --miss: #5b6271;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #13151b; --key: #232731; --key-edge: #323846; --text: #eceef3; --muted: #9098a8;
+  --ink: #8c97ff; --trace: #eceef3; --good: #39b56e; --near: #e8b02a; --miss: #5b6271;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--paper); color: var(--text); font-family: var(--body);
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.app {
+  max-width: 520px; margin: 0 auto; min-height: 100%;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 12px 16px 16px;
+}
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mark { display: flex; align-items: baseline; gap: 10px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: 30px; letter-spacing: -0.02em; margin: 0; line-height: 1; }
+h1 svg { display: block; width: 40px; height: 10px; margin-top: 3px; }
+.num { font-family: var(--display); font-weight: 500; color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+.iconbtn {
+  font: 700 14px var(--body); color: var(--text); background: var(--key); border: 1px solid var(--key-edge);
+  border-radius: 999px; padding: 7px 13px; cursor: pointer;
+}
+.iconbtn:focus-visible, .btn:focus-visible, .key:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+.howto {
+  background: var(--key); border: 1px solid var(--key-edge); border-radius: 14px; padding: 12px 14px;
+  font-size: 15px; line-height: 1.45;
+}
+.howto p { margin: 0 0 6px; }
+.howto .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 8px 0 10px; font-size: 14px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chip { width: 18px; height: 6px; border-radius: 3px; display: inline-block; }
+.howto[hidden] { display: none; }
+
+.rows { display: grid; gap: 6px; justify-content: center; }
+.row { display: flex; align-items: center; }
+.row.shake { animation: shake .35s; }
+@keyframes shake { 20%,60% { transform: translateX(-6px); } 40%,80% { transform: translateX(6px); } }
+.tile {
+  width: 46px; height: 46px; border-radius: 10px; display: grid; place-items: center;
+  font: 800 24px var(--display); text-transform: uppercase;
+  background: var(--key); border: 2px solid var(--key-edge);
+}
+.tile.filled { border-color: var(--muted); }
+.row.done .tile { border-color: transparent; }
+.link { width: 14px; height: 6px; border-radius: 3px; background: transparent; }
+.row.done .link { background: var(--miss); }
+.row.done .link.g { background: var(--good); }
+.row.done .link.y { background: var(--near); }
+
+.msg { min-height: 22px; text-align: center; font-size: 15px; color: var(--muted); }
+.msg strong { color: var(--text); }
+
+.result {
+  background: var(--key); border: 1px solid var(--key-edge); border-radius: 14px; padding: 14px;
+  display: grid; gap: 10px; text-align: center;
+}
+.result[hidden] { display: none; }
+.result h2 { font-family: var(--display); font-weight: 800; font-size: 22px; margin: 0; text-wrap: balance; }
+.result .stats { display: flex; justify-content: center; gap: 22px; font-variant-numeric: tabular-nums; }
+.stats div { display: grid; }
+.stats b { font: 800 22px var(--display); }
+.stats small { color: var(--muted); font-size: 12px; }
+.actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.btn {
+  font: 700 15px var(--body); border-radius: 999px; padding: 10px 18px; cursor: pointer;
+  border: 1px solid var(--key-edge); background: var(--paper); color: var(--text);
+}
+.btn.primary { background: var(--ink); border-color: var(--ink); color: #fff; }
+textarea.sharebox { width: 100%; font: 14px/1.4 ui-monospace, monospace; border-radius: 10px; padding: 8px; border: 1px solid var(--key-edge); background: var(--paper); color: var(--text); }
+
+.board { margin-top: auto; user-select: none; -webkit-user-select: none; }
+.board svg { width: 100%; height: auto; display: block; overflow: visible; }
+.key rect { fill: var(--key); stroke: var(--key-edge); stroke-width: 2; }
+.key text { fill: var(--text); font: 700 40px var(--body); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.key.fn text { font-size: 28px; }
+.key { cursor: pointer; }
+.key:active rect, .key.pressed rect { fill: var(--key-edge); }
+.answer { fill: none; stroke: var(--ink); stroke-width: 15; stroke-linecap: round; stroke-linejoin: round; opacity: .88; pointer-events: none; }
+.answer-loop { fill: none; stroke: var(--ink); stroke-width: 12; opacity: .88; pointer-events: none; }
+.startdot { fill: var(--ink); pointer-events: none; }
+.endcap { fill: var(--ink); pointer-events: none; }
+.knot { fill: var(--paper); stroke: var(--ink); stroke-width: 5; pointer-events: none; }
+.trace { fill: none; stroke: var(--trace); stroke-width: 6; stroke-dasharray: 2 14; stroke-linecap: round; stroke-linejoin: round; opacity: .75; pointer-events: none; }
+.trace-loop { fill: none; stroke: var(--trace); stroke-width: 5; stroke-dasharray: 2 10; stroke-linecap: round; opacity: .75; pointer-events: none; }
+.draw { animation: draw 1.6s ease-in-out both; }
+@keyframes draw { from { stroke-dashoffset: var(--len); } to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .draw, .row.shake { animation: none; } }
+.hintnote { font-size: 13px; color: var(--muted); text-align: center; margin-top: 6px; }
+@media (max-width: 360px) { .tile { width: 40px; height: 40px; font-size: 21px; } .link { width: 10px; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="mark">
+      <h1>Squiggle
+        <svg viewBox="0 0 40 10" aria-hidden="true"><path d="M2 7 C8 0, 12 0, 15 5 S22 10, 26 4 S34 1, 38 5" fill="none" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/></svg>
+      </h1>
+      <span class="num" id="num">#1</span>
+    </div>
+    <button class="iconbtn" id="helpBtn" type="button" aria-controls="howto">How to play</button>
+  </header>
+
+  <section class="howto" id="howto">
+    <p><strong>The blue line is today's word, swiped across the keyboard.</strong> It starts at the dot and ends at the arrow. Guess the 5-letter word in 6 tries.</p>
+    <p>Tap keys to type. Your guess draws its own dotted line, so you can match the shape.</p>
+    <div class="legend">
+      <span><i class="chip" style="background:var(--good)"></i>Right stroke, right spot</span>
+      <span><i class="chip" style="background:var(--near)"></i>Stroke is in the word elsewhere</span>
+      <span><i class="chip" style="background:var(--miss)"></i>Not in the word</span>
+    </div>
+    <p style="color:var(--muted);font-size:14px">The bars between your letters score each stroke (letter to letter). A loop means a double letter. Miss three times and the turning points appear.</p>
+    <button class="btn" id="gotIt" type="button">Got it</button>
+  </section>
+
+  <div class="rows" id="rows" aria-label="Guesses"></div>
+  <div class="msg" id="msg" role="status" aria-live="polite"></div>
+
+  <section class="result" id="result" hidden>
+    <h2 id="resultTitle"></h2>
+    <div class="stats" id="stats"></div>
+    <div class="actions">
+      <button class="btn primary" id="shareBtn" type="button">Copy result</button>
+      <button class="btn" id="practiceBtn" type="button">Play a practice round</button>
+    </div>
+    <textarea class="sharebox" id="shareBox" rows="8" readonly hidden aria-label="Result to copy"></textarea>
+  </section>
+
+  <div class="board">
+    <svg id="kb" viewBox="-10 -10 1020 440" role="group" aria-label="Keyboard"></svg>
+    <div class="hintnote" id="hintnote"></div>
+  </div>
+</div>
+
+<script>
+const ANSWERS = "__ANSWERS__".split(" ");
+const VALID = new Set("__VALID__".split(" "));
+for (const w of ANSWERS) VALID.add(w);
+
+const LAUNCH = new Date(2026, 10, 3); // Nov 3, 2026: puzzle #1
+const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+const KW = 100, KH = 126, GAP = 8, ROWY = [0, 146, 292];
+const ROWX = [0, 50, 150];
+const POS = {};
+ROWS.forEach((r, ri) => [...r].forEach((c, ci) => {
+  POS[c] = { x: ROWX[ri] + ci * KW + KW / 2, y: ROWY[ri] + KH / 2 };
+}));
+const MAXG = 6, LEN = 5;
+
+// ---------- helpers ----------
+function store(key, val) { try { if (val === undefined) return JSON.parse(localStorage.getItem(key)); localStorage.setItem(key, JSON.stringify(val)); } catch (e) { return null; } }
+function dayIndex(d = new Date()) {
+  const a = Date.UTC(LAUNCH.getFullYear(), LAUNCH.getMonth(), LAUNCH.getDate());
+  const b = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  return Math.round((b - a) / 86400000);
+}
+function mulberry(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const ORDER = (() => { const a = ANSWERS.slice(), r = mulberry(20261103); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; })();
+function dailyWord(i) { return ORDER[((i % ORDER.length) + ORDER.length) % ORDER.length]; }
+
+// score each stroke (letter i -> i+1) of a guess against the answer
+function score(guess, answer) {
+  const seg = w => [...Array(LEN - 1)].map((_, i) => w[i] + w[i + 1]);
+  const g = seg(guess), a = seg(answer);
+  const res = Array(LEN - 1).fill("x"), used = Array(LEN - 1).fill(false);
+  g.forEach((s, i) => { if (s === a[i]) { res[i] = "g"; used[i] = true; } });
+  g.forEach((s, i) => {
+    if (res[i] === "g") return;
+    const rev = s[1] + s[0];
+    const j = a.findIndex((t, k) => !used[k] && (t === s || t === rev));
+    if (j >= 0) { res[i] = "y"; used[j] = true; }
+  });
+  return res;
+}
+
+// smooth path through key centers (Catmull-Rom -> cubic Bezier); doubles become loops
+function geometry(word) {
+  const pts = [], loops = [];
+  [...word].forEach((c, i) => {
+    const p = POS[c]; if (!p) return;
+    if (i > 0 && word[i - 1] === c) { loops.push(p); return; }
+    pts.push(p);
+  });
+  if (pts.length === 1) return { d: `M${pts[0].x} ${pts[0].y}`, pts, loops };
+  let d = `M${pts[0].x} ${pts[0].y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    const t = 0.2; // curve tension
+    const c1 = { x: p1.x + (p2.x - p0.x) * t, y: p1.y + (p2.y - p0.y) * t };
+    const c2 = { x: p2.x - (p3.x - p1.x) * t, y: p2.y - (p3.y - p1.y) * t };
+    d += ` C${c1.x.toFixed(1)} ${c1.y.toFixed(1)}, ${c2.x.toFixed(1)} ${c2.y.toFixed(1)}, ${p2.x} ${p2.y}`;
+  }
+  return { d, pts, loops };
+}
+
+// ---------- state ----------
+let S = null; // { mode, day, answer, guesses:[], cur:"", over:false, won:false }
+const $ = id => document.getElementById(id);
+
+function freshDaily() {
+  const day = dayIndex();
+  const saved = store("squiggle.day");
+  if (saved && saved.day === day && saved.mode === "daily") return saved;
+  return { mode: "daily", day, answer: dailyWord(day), guesses: [], cur: "", over: false, won: false };
+}
+function save() { if (S.mode === "daily") store("squiggle.day", S); }
+
+// ---------- render ----------
+const SVGNS = "http://www.w3.org/2000/svg";
+function el(tag, attrs = {}, parent) { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+
+let layer = {};
+function buildKeyboard() {
+  const kb = $("kb"); kb.innerHTML = "";
+  const keys = el("g", {}, kb);
+  const addKey = (label, x, y, w, val, fn) => {
+    const g = el("g", { class: "key" + (fn ? " fn" : ""), tabindex: "0", role: "button", "aria-label": fn ? label : val.toUpperCase(), "data-k": val }, keys);
+    el("rect", { x: x + GAP / 2, y, width: w - GAP, height: KH, rx: 16 }, g);
+    const t = el("text", { x: x + w / 2, y: y + KH / 2 }, g); t.textContent = label;
+    g.addEventListener("pointerdown", e => { e.preventDefault(); press(val); g.classList.add("pressed"); setTimeout(() => g.classList.remove("pressed"), 110); });
+    g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); press(val); } });
+  };
+  ROWS.forEach((r, ri) => [...r].forEach((c, ci) => addKey(c.toUpperCase(), ROWX[ri] + ci * KW, ROWY[ri], KW, c)));
+  addKey("Enter", 0, ROWY[2], 150, "enter", true);
+  addKey("⌫", 850, ROWY[2], 150, "back", true);
+  layer.answer = el("g", {}, kb);
+  layer.trace = el("g", {}, kb);
+}
+
+function drawAnswer(animate) {
+  const g = layer.answer; g.innerHTML = "";
+  const { d, pts, loops } = geometry(S.answer);
+  const path = el("path", { d, class: "answer" }, g);
+  loops.forEach(p => el("circle", { cx: p.x, cy: p.y - 30, r: 26, class: "answer-loop" }, g));
+  const a = pts[0], b = pts[pts.length - 1], prev = pts[pts.length - 2] || a;
+  el("circle", { cx: a.x, cy: a.y, r: 18, class: "startdot" }, g);
+  // arrowhead at the end, pointing along the last stroke
+  const ang = Math.atan2(b.y - prev.y, b.x - prev.x);
+  const tip = (r, da) => `${(b.x + Math.cos(ang + da) * r).toFixed(1)},${(b.y + Math.sin(ang + da) * r).toFixed(1)}`;
+  el("polygon", { points: `${tip(26, 0)} ${tip(22, 2.4)} ${tip(22, -2.4)}`, class: "endcap" }, g);
+  const misses = S.guesses.filter(x => x !== S.answer).length;
+  if (misses >= 3 || S.over) [...S.answer].forEach((c, i) => { if (i > 0 && S.answer[i - 1] === c) return; el("circle", { cx: POS[c].x, cy: POS[c].y, r: 11, class: "knot" }, g); });
+  if (animate && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const L = path.getTotalLength();
+    path.style.strokeDasharray = L; path.style.setProperty("--len", L); path.classList.add("draw");
+    path.addEventListener("animationend", () => { path.style.strokeDasharray = ""; path.classList.remove("draw"); }, { once: true });
+  }
+  const misses2 = misses;
+  $("hintnote").textContent = S.over ? "" : misses2 >= 3 ? "Hint on: the hollow dots mark each letter." : `Turning points appear after ${3 - misses2} more miss${3 - misses2 === 1 ? "" : "es"}.`;
+}
+
+function drawTrace() {
+  const g = layer.trace; g.innerHTML = "";
+  const w = S.over ? "" : (S.cur || S.guesses[S.guesses.length - 1] || "");
+  if (w.length < 1) return;
+  const { d, loops, pts } = geometry(w);
+  if (pts.length > 1) el("path", { d, class: "trace" }, g);
+  else el("circle", { cx: pts[0].x, cy: pts[0].y, r: 8, fill: "var(--trace)", opacity: .75 }, g);
+  loops.forEach(p => el("circle", { cx: p.x, cy: p.y - 30, r: 22, class: "trace-loop" }, g));
+}
+
+function renderRows(shakeRow) {
+  const rows = $("rows"); rows.innerHTML = "";
+  for (let r = 0; r < MAXG; r++) {
+    const row = document.createElement("div"); row.className = "row";
+    const done = r < S.guesses.length, word = done ? S.guesses[r] : r === S.guesses.length && !S.over ? S.cur : "";
+    const sc = done ? score(word, S.answer) : null;
+    if (done) row.classList.add("done");
+    if (shakeRow === r) row.classList.add("shake");
+    for (let i = 0; i < LEN; i++) {
+      const t = document.createElement("div"); t.className = "tile" + (word[i] ? " filled" : ""); t.textContent = word[i] || "";
+      row.appendChild(t);
+      if (i < LEN - 1) { const l = document.createElement("div"); l.className = "link" + (sc ? " " + sc[i] : ""); row.appendChild(l); }
+    }
+    if (done) row.setAttribute("aria-label", `${word.toUpperCase()}: ${sc.map(s => s === "g" ? "right" : s === "y" ? "elsewhere" : "no").join(", ")}`);
+    rows.appendChild(row);
+  }
+}
+
+function stats() { return store("squiggle.stats") || { played: 0, wins: 0, streak: 0, best: 0, last: null }; }
+
+function renderResult() {
+  const box = $("result");
+  if (!S.over) { box.hidden = true; return; }
+  box.hidden = false;
+  $("resultTitle").textContent = S.won
+    ? (S.guesses.length === 1 ? "First try. Unreal." : `Solved in ${S.guesses.length}.`)
+    : `The word was ${S.answer.toUpperCase()}.`;
+  const st = stats();
+  $("stats").innerHTML = S.mode === "daily"
+    ? `<div><b>${st.played}</b><small>Played</small></div><div><b>${st.played ? Math.round(100 * st.wins / st.played) : 0}%</b><small>Won</small></div><div><b>${st.streak}</b><small>Streak</small></div><div><b>${st.best}</b><small>Best streak</small></div>`
+    : `<div><small>Practice round. Your daily streak is safe.</small></div>`;
+  $("shareBtn").hidden = S.mode !== "daily";
+  $("practiceBtn").textContent = S.mode === "daily" ? "Play a practice round" : "Another practice round";
+}
+
+function render(opts = {}) {
+  $("num").textContent = S.mode === "daily" ? `#${S.day + 1}` : "Practice";
+  renderRows(opts.shake);
+  drawTrace();
+  renderResult();
+}
+
+function say(html, ms) { const m = $("msg"); m.innerHTML = html; if (ms) setTimeout(() => { if (m.innerHTML === html) m.innerHTML = ""; }, ms); }
+
+// ---------- input ----------
+function press(k) {
+  if (S.over) return;
+  if (k === "back") S.cur = S.cur.slice(0, -1);
+  else if (k === "enter") return submit();
+  else if (/^[a-z]$/.test(k) && S.cur.length < LEN) S.cur += k;
+  render(); save();
+}
+function submit() {
+  if (S.cur.length < LEN) { say("Five letters, please.", 1600); render({ shake: S.guesses.length }); return; }
+  if (!VALID.has(S.cur)) { say(`<strong>${S.cur.toUpperCase()}</strong> isn't in the word list.`, 1800); render({ shake: S.guesses.length }); return; }
+  S.guesses.push(S.cur); S.cur = "";
+  if (S.guesses[S.guesses.length - 1] === S.answer) { S.over = true; S.won = true; }
+  else if (S.guesses.length >= MAXG) { S.over = true; }
+  if (S.over && S.mode === "daily") {
+    const st = stats();
+    if (st.last !== S.day) {
+      st.played++; if (S.won) { st.wins++; st.streak = st.last === S.day - 1 ? st.streak + 1 : 1; st.best = Math.max(st.best, st.streak); } else st.streak = 0;
+      st.last = S.day; store("squiggle.stats", st);
+    }
+  }
+  if (S.over && S.mode === "daily") say("Come back tomorrow for a new squiggle.");
+  save(); render(); drawAnswer(false);
+}
+
+function shareText() {
+  const rows = S.guesses.map(g => score(g, S.answer).map(s => s === "g" ? "🟩" : s === "y" ? "🟨" : "⬛").join(""));
+  return `Squiggle #${S.day + 1} ${S.won ? S.guesses.length : "X"}/6\n${rows.join("\n")}`;
+}
+$("shareBtn").addEventListener("click", async () => {
+  const t = shareText();
+  try { await navigator.clipboard.writeText(t); say("Copied. Paste it anywhere.", 2200); }
+  catch (e) { const b = $("shareBox"); b.hidden = false; b.value = t; b.focus(); b.select(); say("Copy the text below.", 2600); }
+});
+$("practiceBtn").addEventListener("click", () => {
+  const w = ANSWERS[Math.floor(Math.random() * ANSWERS.length)];
+  S = { mode: "practice", day: dayIndex(), answer: w, guesses: [], cur: "", over: false, won: false };
+  $("shareBox").hidden = true; say("Practice round. Same rules, no streak.", 2200);
+  render(); drawAnswer(true);
+});
+$("helpBtn").addEventListener("click", () => { const h = $("howto"); h.hidden = !h.hidden; });
+$("gotIt").addEventListener("click", () => { $("howto").hidden = true; store("squiggle.seenHelp", true); });
+document.addEventListener("keydown", e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target && (e.target.tagName === "TEXTAREA" || e.target.closest?.(".key"))) return;
+  if (e.key === "Enter") { e.preventDefault(); press("enter"); }
+  else if (e.key === "Backspace") press("back");
+  else if (/^[a-zA-Z]$/.test(e.key)) press(e.key.toLowerCase());
+});
+
+function start(data) {
+  S = data && data.S ? data.S : freshDaily();
+  if (store("squiggle.seenHelp")) $("howto").hidden = true;
+  buildKeyboard(); render(); drawAnswer(!(data && data.S));
+  if (S.over) say("Come back tomorrow for a new squiggle.");
+}
+window.claude?.hot?.snapshot?.(() => ({ S }));
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>
+</body>
+</html>
