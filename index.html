@@ -114,6 +114,7 @@ textarea.sharebox { width: 100%; font: 14px/1.4 ui-monospace, monospace; border-
   opacity: 0; transition: opacity .15s;
 }
 .toast.on { opacity: 1; }
+.board.over svg { opacity: .35; pointer-events: none; }
 .board svg { width: 100%; height: auto; display: block; overflow: visible; }
 .key rect { fill: var(--key); stroke: var(--key-edge); stroke-width: 2; }
 .label { fill: var(--text); font: 700 42px var(--body); text-anchor: middle; dominant-baseline: central; pointer-events: none;
@@ -159,18 +160,18 @@ textarea.sharebox { width: 100%; font: 14px/1.4 ui-monospace, monospace; border-
     <button class="btn" id="gotIt" type="button">Got it</button>
   </section>
 
-  <div class="rows" id="rows" aria-label="Guesses"></div>
-  <div class="msg" id="msg" role="status" aria-live="polite"></div>
-
   <section class="result" id="result" hidden>
     <h2 id="resultTitle"></h2>
     <div class="stats" id="stats"></div>
     <div class="actions">
-      <button class="btn primary" id="shareBtn" type="button">Copy result</button>
-      <button class="btn" id="practiceBtn" type="button">Play a practice round</button>
+      <button class="btn primary" id="practiceBtn" type="button">Next word</button>
+      <button class="btn" id="shareBtn" type="button">Copy result</button>
     </div>
     <textarea class="sharebox" id="shareBox" rows="8" readonly hidden aria-label="Result to copy"></textarea>
   </section>
+
+  <div class="rows" id="rows" aria-label="Guesses"></div>
+  <div class="msg" id="msg" role="status" aria-live="polite"></div>
 
   <div class="board">
     <div class="toast" id="toast" role="alert"></div>
@@ -250,7 +251,7 @@ function freshDaily() {
   if (saved && saved.day === day && saved.mode === "daily") return saved;
   return { mode: "daily", day, answer: dailyWord(day), guesses: [], cur: "", over: false, won: false };
 }
-function save() { if (S.mode === "daily") store("squiggle.day", S); }
+function save() { if (S.mode === "daily") store("squiggle.day", S); else store("squiggle.bonus", S); }
 
 // ---------- render ----------
 const SVGNS = "http://www.w3.org/2000/svg";
@@ -340,19 +341,20 @@ function renderResult() {
   const st = stats();
   $("stats").innerHTML = S.mode === "daily"
     ? `<div><b>${st.played}</b><small>Played</small></div><div><b>${st.played ? Math.round(100 * st.wins / st.played) : 0}%</b><small>Won</small></div><div><b>${st.streak}</b><small>Streak</small></div><div><b>${st.best}</b><small>Best streak</small></div>`
-    : `<div><small>Practice round. Your daily streak is safe.</small></div>`;
+    : `<div><small>Bonus rounds don't count toward your streak.</small></div>`;
   $("shareBtn").hidden = S.mode !== "daily";
-  $("practiceBtn").textContent = S.mode === "daily" ? "Play a practice round" : "Another practice round";
+  $("practiceBtn").textContent = S.mode === "daily" ? "Play another word" : "Next word";
 }
 
 function render(opts = {}) {
-  $("num").textContent = S.mode === "daily" ? `#${S.day + 1}` : "Practice";
+  $("num").textContent = S.mode === "daily" ? `#${S.day + 1}` : "Bonus round";
+  document.querySelector(".board").classList.toggle("over", S.over);
   renderRows(opts.shake);
   drawTrace();
   renderResult();
 }
 
-const VERSION = "v5";
+const VERSION = "v6";
 let lastError = "";
 function safe(fn) { try { fn(); } catch (err) { showError(err); } }
 function showError(err) {
@@ -387,7 +389,7 @@ function submit() {
       st.last = S.day; store("squiggle.stats", st);
     }
   }
-  if (S.over && S.mode === "daily") say("Come back tomorrow for a new squiggle.");
+  if (S.over && S.mode === "daily") say("That's today's squiggle. Tap Play another word to keep going.");
   save(); render(); drawAnswer(false);
 }
 
@@ -400,10 +402,19 @@ $("shareBtn").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText(t); say("Copied. Paste it anywhere.", 2200); }
   catch (e) { const b = $("shareBox"); b.hidden = false; b.value = t; b.focus(); b.select(); say("Copy the text below.", 2600); }
 });
+let memQueue = null;
+function nextBonusWord() {
+  let q = store("squiggle.queue") || memQueue;
+  if (!Array.isArray(q) || !q.length) {
+    q = ANSWERS.filter(w => w !== dailyWord(dayIndex()));
+    for (let i = q.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [q[i], q[j]] = [q[j], q[i]]; }
+  }
+  const w = q.shift(); memQueue = q; store("squiggle.queue", q); return w;
+}
 $("practiceBtn").addEventListener("click", () => {
-  const w = ANSWERS[Math.floor(Math.random() * ANSWERS.length)];
+  const w = nextBonusWord();
   S = { mode: "practice", day: dayIndex(), answer: w, guesses: [], cur: "", over: false, won: false };
-  $("shareBox").hidden = true; say("Practice round. Same rules, no streak.", 2200);
+  $("shareBox").hidden = true; say("Bonus round. Same rules, no streak.", 2200);
   render(); drawAnswer(true);
 });
 $("helpBtn").addEventListener("click", () => { const h = $("howto"); h.hidden = !h.hidden; });
@@ -421,7 +432,7 @@ function start(data) {
   if (!Array.isArray(S.guesses) || typeof S.cur !== "string" || !S.answer) S = freshDaily();
   if (store("squiggle.seenHelp")) $("howto").hidden = true;
   buildKeyboard(); render(); drawAnswer(!(data && data.S));
-  if (S.over) say("Come back tomorrow for a new squiggle.");
+  if (S.over && S.mode === "daily") say("That's today's squiggle. Tap Play another word to keep going.");
 }
 window.claude?.hot?.snapshot?.(() => ({ S }));
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
