@@ -44,8 +44,8 @@ body {
 }
 .app {
   max-width: 520px; margin: 0 auto; min-height: 100%;
-  display: flex; flex-direction: column; gap: 12px;
-  padding: 12px 16px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 10px 16px 12px;
 }
 header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .mark { display: flex; align-items: baseline; gap: 10px; }
@@ -59,8 +59,9 @@ h1 svg { display: block; width: 40px; height: 10px; margin-top: 3px; }
 .iconbtn:focus-visible, .btn:focus-visible, .key:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 
 .howto {
-  background: var(--key); border: 1px solid var(--key-edge); border-radius: 14px; padding: 12px 14px;
-  font-size: 15px; line-height: 1.45;
+  position: fixed; inset: auto 12px 12px 12px; max-width: 496px; margin: 0 auto; z-index: 10;
+  background: var(--key); border: 1px solid var(--key-edge); border-radius: 16px; padding: 14px 16px;
+  font-size: 15px; line-height: 1.45; box-shadow: 0 12px 40px rgba(0,0,0,.25);
 }
 .howto p { margin: 0 0 6px; }
 .howto .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 8px 0 10px; font-size: 14px; }
@@ -68,12 +69,12 @@ h1 svg { display: block; width: 40px; height: 10px; margin-top: 3px; }
 .chip { width: 18px; height: 6px; border-radius: 3px; display: inline-block; }
 .howto[hidden] { display: none; }
 
-.rows { display: grid; gap: 6px; justify-content: center; }
+.rows { display: grid; gap: 5px; justify-content: center; }
 .row { display: flex; align-items: center; }
 .row.shake { animation: shake .35s; }
 @keyframes shake { 20%,60% { transform: translateX(-6px); } 40%,80% { transform: translateX(6px); } }
 .tile {
-  width: 46px; height: 46px; border-radius: 10px; display: grid; place-items: center;
+  width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center;
   font: 800 24px var(--display); text-transform: uppercase;
   background: var(--key); border: 2px solid var(--key-edge);
 }
@@ -105,7 +106,14 @@ h1 svg { display: block; width: 40px; height: 10px; margin-top: 3px; }
 .btn.primary { background: var(--ink); border-color: var(--ink); color: #fff; }
 textarea.sharebox { width: 100%; font: 14px/1.4 ui-monospace, monospace; border-radius: 10px; padding: 8px; border: 1px solid var(--key-edge); background: var(--paper); color: var(--text); }
 
-.board { margin-top: auto; user-select: none; -webkit-user-select: none; }
+.board { margin-top: auto; user-select: none; -webkit-user-select: none; position: relative; }
+.toast {
+  position: absolute; left: 50%; top: -6px; transform: translate(-50%, -100%); z-index: 5;
+  background: var(--text); color: var(--paper); font: 700 15px var(--body);
+  padding: 9px 14px; border-radius: 10px; white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity .15s;
+}
+.toast.on { opacity: 1; }
 .board svg { width: 100%; height: auto; display: block; overflow: visible; }
 .key rect { fill: var(--key); stroke: var(--key-edge); stroke-width: 2; }
 .label { fill: var(--text); font: 700 42px var(--body); text-anchor: middle; dominant-baseline: central; pointer-events: none;
@@ -165,6 +173,7 @@ textarea.sharebox { width: 100%; font: 14px/1.4 ui-monospace, monospace; border-
   </section>
 
   <div class="board">
+    <div class="toast" id="toast" role="alert"></div>
     <svg id="kb" viewBox="-10 -10 1020 440" role="group" aria-label="Keyboard"></svg>
     <div class="hintnote" id="hintnote"></div>
   </div>
@@ -294,7 +303,7 @@ function drawTrace() {
   if (w.length < 1) return;
   const { d, loops, pts } = geometry(w);
   if (pts.length > 1) el("path", { d, class: "trace" }, g);
-  else el("circle", { cx: pts[0].x, cy: pts[0].y, r: 8, fill: "var(--trace)", opacity: .75 }, g);
+  else el("circle", { cx: pts[0].x, cy: pts[0].y, r: 8, fill: "var(--trace)", opacity: .75, "pointer-events": "none" }, g);
   loops.forEach(p => el("circle", { cx: p.x, cy: p.y - 30, r: 22, class: "trace-loop" }, g));
 }
 
@@ -340,6 +349,8 @@ function render(opts = {}) {
   renderResult();
 }
 
+let toastTimer;
+function toast(text) { const t = $("toast"); t.textContent = text; t.classList.add("on"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 2600); }
 function say(html, ms) { const m = $("msg"); m.innerHTML = html; if (ms) setTimeout(() => { if (m.innerHTML === html) m.innerHTML = ""; }, ms); }
 
 // ---------- input ----------
@@ -347,12 +358,12 @@ function press(k) {
   if (S.over) return;
   if (k === "back") S.cur = S.cur.slice(0, -1);
   else if (k === "enter") return submit();
-  else if (/^[a-z]$/.test(k) && S.cur.length < LEN) S.cur += k;
+  else if (/^[a-z]$/.test(k)) { if (S.cur.length < LEN) S.cur += k; else { toast("Row is full. Tap Enter, or ⌫ to change it."); render({ shake: S.guesses.length }); return; } }
   render(); save();
 }
 function submit() {
-  if (S.cur.length < LEN) { say("Five letters, please.", 1600); render({ shake: S.guesses.length }); return; }
-  if (!VALID.has(S.cur)) { say(`<strong>${S.cur.toUpperCase()}</strong> isn't in the word list.`, 1800); render({ shake: S.guesses.length }); return; }
+  if (S.cur.length < LEN) { toast("Type 5 letters, then Enter."); render({ shake: S.guesses.length }); return; }
+  if (!VALID.has(S.cur)) { toast(`${S.cur.toUpperCase()} isn't in the word list. Tap ⌫ to fix it.`); render({ shake: S.guesses.length }); return; }
   S.guesses.push(S.cur); S.cur = "";
   if (S.guesses[S.guesses.length - 1] === S.answer) { S.over = true; S.won = true; }
   else if (S.guesses.length >= MAXG) { S.over = true; }
