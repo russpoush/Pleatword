@@ -267,7 +267,10 @@ function buildKeyboard() {
     const g = el("g", { class: "key" + (fn ? " fn" : ""), tabindex: "0", role: "button", "aria-label": fn ? label : val.toUpperCase(), "data-k": val }, keys);
     el("rect", { x: x + GAP / 2, y, width: w - GAP, height: KH, rx: 16 }, g);
     const t = el("text", { x: x + w / 2, y: y + KH / 2, class: "label" + (fn ? " fn" : "") }, labels); t.textContent = label;
-    g.addEventListener("pointerdown", e => { e.preventDefault(); press(val); g.classList.add("pressed"); setTimeout(() => g.classList.remove("pressed"), 110); });
+    let lastDown = 0;
+    const hit = () => { safe(() => press(val)); g.classList.add("pressed"); setTimeout(() => g.classList.remove("pressed"), 110); };
+    g.addEventListener("pointerdown", e => { e.preventDefault(); lastDown = Date.now(); hit(); });
+    g.addEventListener("click", () => { if (Date.now() - lastDown > 600) hit(); });
     g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); press(val); } });
   };
   ROWS.forEach((r, ri) => [...r].forEach((c, ci) => addKey(c.toUpperCase(), ROWX[ri] + ci * KW, ROWY[ri], KW, c)));
@@ -294,7 +297,7 @@ function drawAnswer(animate) {
     path.addEventListener("animationend", () => { path.style.strokeDasharray = ""; path.classList.remove("draw"); }, { once: true });
   }
   const misses2 = misses;
-  $("hintnote").textContent = S.over ? "" : misses2 >= 3 ? "Hint on: the hollow dots mark each letter." : `Turning points appear after ${3 - misses2} more miss${3 - misses2 === 1 ? "" : "es"}.`;
+  $("hintnote").textContent = lastError ? `${VERSION} · error: ${lastError}` : S.over ? VERSION : misses2 >= 3 ? `Hint on: the hollow dots mark each letter. · ${VERSION}` : `Turning points appear after ${3 - misses2} more miss${3 - misses2 === 1 ? "" : "es"}. · ${VERSION}`;
 }
 
 function drawTrace() {
@@ -349,6 +352,16 @@ function render(opts = {}) {
   renderResult();
 }
 
+const VERSION = "v5";
+let lastError = "";
+function safe(fn) { try { fn(); } catch (err) { showError(err); } }
+function showError(err) {
+  lastError = (err && (err.message || err.reason || err)) + "";
+  const t = $("toast"); t.textContent = "Something broke: " + lastError; t.classList.add("on");
+  $("hintnote").textContent = `${VERSION} · error: ${lastError}`;
+}
+window.addEventListener("error", e => showError(e.error || e.message));
+window.addEventListener("unhandledrejection", e => showError(e.reason));
 let toastTimer;
 function toast(text) { const t = $("toast"); t.textContent = text; t.classList.add("on"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 2600); }
 function say(html, ms) { const m = $("msg"); m.innerHTML = html; if (ms) setTimeout(() => { if (m.innerHTML === html) m.innerHTML = ""; }, ms); }
@@ -400,11 +413,12 @@ document.addEventListener("keydown", e => {
   if (e.target && (e.target.tagName === "TEXTAREA" || e.target.closest?.(".key"))) return;
   if (e.key === "Enter") { e.preventDefault(); press("enter"); }
   else if (e.key === "Backspace") press("back");
-  else if (/^[a-zA-Z]$/.test(e.key)) press(e.key.toLowerCase());
+  else if (/^[a-zA-Z]$/.test(e.key)) safe(() => press(e.key.toLowerCase()));
 });
 
 function start(data) {
-  S = data && data.S ? data.S : freshDaily();
+  S = data && data.S ? JSON.parse(JSON.stringify(data.S)) : freshDaily();
+  if (!Array.isArray(S.guesses) || typeof S.cur !== "string" || !S.answer) S = freshDaily();
   if (store("squiggle.seenHelp")) $("howto").hidden = true;
   buildKeyboard(); render(); drawAnswer(!(data && data.S));
   if (S.over) say("Come back tomorrow for a new squiggle.");
