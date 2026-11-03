@@ -20,8 +20,10 @@ A daily word puzzle. Today's 5-letter word is drawn on a phone keyboard as the l
 |---|---|
 | `index.html` | The built, playable game. One self-contained file. Open it in a browser or host it anywhere (GitHub Pages works). |
 | `src/template.html` | Game source: markup, styles and script. Word lists are injected at build time. |
-| `data/answers.txt` | 614 hand-picked daily answers. The daily order is a seeded shuffle of this list. |
-| `data/valid-guesses.txt` | Words accepted as guesses. |
+| `data/answers.txt` | 614 hand-picked daily answers, all in ENABLE. The daily order is a seeded shuffle of this list. |
+| `data/valid-guesses.txt` | Words accepted as guesses: the 8,672 five-letter words in the public-domain ENABLE list. |
+| `data/extra-guesses.txt` | Newer everyday words ENABLE is missing (emoji, inbox, login...). Add your own here. |
+| `data/SOURCES.md` | Where each word list came from. |
 | `build.py` | Rebuilds `index.html` from the template and word lists. |
 
 ## Build
@@ -39,6 +41,6 @@ No dependencies beyond Python 3.
 - **Hint timing:** search for `misses >= 3` in `src/template.html`.
 - **Curve shape:** `const t = 0.2` in `geometry()` sets the curve tension.
 
-## Before a public release
+## Word lists
 
-`data/valid-guesses.txt` comes from [tabatkins/wordle-list](https://github.com/tabatkins/wordle-list) (MIT, see `data/valid-guesses.LICENSE`), which was extracted from Wordle's source. Replace it with an independent dictionary before shipping commercially.
+All word lists are free to use commercially. The guess list is ENABLE, which is in the public domain; see `data/SOURCES.md`. The build stops with an error if any daily answer is missing from the guess list.
