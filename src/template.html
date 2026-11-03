@@ -115,6 +115,9 @@ textarea.sharebox { width: 100%; font: 14px/1.4 ui-monospace, monospace; border-
 }
 .toast.on { opacity: 1; }
 .board.over svg { opacity: .35; pointer-events: none; }
+.key.ready rect { fill: var(--ink); stroke: var(--ink); }
+.label.ready { fill: #fff; stroke: var(--ink); }
+
 .board svg { width: 100%; height: auto; display: block; overflow: visible; }
 .key rect { fill: var(--key); stroke: var(--key-edge); stroke-width: 2; }
 .label { fill: var(--text); font: 700 42px var(--body); text-anchor: middle; dominant-baseline: central; pointer-events: none;
@@ -354,12 +357,15 @@ function renderResult() {
 function render(opts = {}) {
   $("num").textContent = S.mode === "daily" ? `#${S.day + 1}` : "Bonus round";
   document.querySelector(".board").classList.toggle("over", S.over);
+  const ready = !S.over && S.cur.length === LEN;
+  document.querySelector('.key[data-k="enter"]')?.classList.toggle("ready", ready);
+  document.querySelector(".label.fn")?.classList.toggle("ready", ready);
   renderRows(opts.shake);
   drawTrace();
   renderResult();
 }
 
-const VERSION = "v8";
+const VERSION = "v9";
 let lastError = "";
 function safe(fn) { try { fn(); } catch (err) { showError(err); } }
 function showError(err) {
@@ -378,7 +384,7 @@ function press(k) {
   if (S.over) return;
   if (k === "back") S.cur = S.cur.slice(0, -1);
   else if (k === "enter") return submit();
-  else if (/^[a-z]$/.test(k)) { if (S.cur.length < LEN) S.cur += k; else { toast("Row is full. Tap Enter, or ⌫ to change it."); render({ shake: S.guesses.length }); return; } }
+  else if (/^[a-z]$/.test(k)) { if (S.cur.length < LEN) S.cur += k; else { toast("Row is full. Tap the blue Enter key to submit."); render({ shake: S.guesses.length }); return; } }
   render(); save();
 }
 function submit() {
