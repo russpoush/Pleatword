@@ -53,7 +53,7 @@ h1 .corner { width: 22px; height: 22px; background: linear-gradient(135deg, var(
 .sheet { position: relative; transition: width .2s, height .2s; }
 .tile {
   position: absolute; border-radius: 6px; display: grid; place-items: center;
-  font: 800 24px var(--display); text-transform: uppercase; user-select: none;
+  font: 800 21px var(--display); text-transform: uppercase; user-select: none; padding: 0 9px 7px 0;
   transition: transform .17s ease-in;
 }
 .tile.f { background: var(--front); color: var(--front-ink); box-shadow: 0 1px 0 var(--line), 0 0 0 1px var(--line) inset; }
@@ -62,8 +62,8 @@ h1 .corner { width: 22px; height: 22px; background: linear-gradient(135deg, var(
 .tile.thick2 { box-shadow: 0 2px 0 rgba(0,0,0,.18), 0 4px 0 rgba(0,0,0,.12), 0 0 0 1px var(--line) inset; }
 .tile.b.thick1, .tile.b.thick2 { box-shadow: 0 2px 0 rgba(0,0,0,.25), 0 4px 0 rgba(0,0,0,.12); }
 .tile .under {
-  position: absolute; right: 3px; bottom: 3px; width: 15px; height: 15px; border-radius: 3px;
-  font: 700 10px/15px var(--body); text-align: center; text-transform: uppercase;
+  position: absolute; right: 2px; bottom: 2px; width: 14px; height: 14px; border-radius: 3px;
+  font: 700 10px/14px var(--body); text-align: center; text-transform: uppercase;
 }
 .tile.f .under { background: var(--back); color: var(--back-ink); }
 .tile.b .under { background: var(--front); color: var(--front-ink); }
@@ -74,10 +74,15 @@ h1 .corner { width: 22px; height: 22px; background: linear-gradient(135deg, var(
   position: absolute; z-index: 3; border: 0; padding: 0; cursor: pointer; background: transparent;
   display: grid; place-items: center;
 }
-.crease i { display: block; border-radius: 999px; background: var(--line); transition: background .12s; }
-.crease.v i { width: 6px; height: 18px; }
-.crease.h i { width: 18px; height: 6px; }
-.crease.sel i, .crease:hover i { background: var(--back); }
+.crease i { display: block; border-radius: 999px; background: var(--back); opacity: .45; transition: opacity .12s, transform .12s; }
+.crease.v i { width: 8px; height: 22px; }
+.crease.h i { width: 22px; height: 8px; }
+.crease.sel i, .crease:hover i { opacity: 1; }
+.invite .crease i { animation: invite 1.6s ease-in-out infinite; }
+@keyframes invite { 0%,100% { opacity: .45; transform: scale(1); } 50% { opacity: 1; transform: scale(1.25); } }
+@media (prefers-reduced-motion: reduce) { .invite .crease i { animation: none; opacity: .8; } }
+.tag { position: absolute; z-index: 3; font: 700 12px var(--body); color: var(--back); white-space: nowrap; pointer-events: none; }
+
 .guide { position: absolute; z-index: 2; pointer-events: none; border: 0 dashed var(--back); }
 .guide.v { border-left-width: 2px; }
 .guide.h { border-top-width: 2px; }
@@ -130,7 +135,7 @@ textarea.sharebox { width: 100%; font: 14px/1.4 ui-monospace, monospace; border-
     <span class="count" id="count">0 folds · par 2</span>
   </div>
 
-  <div class="stage" id="stage">
+  <div class="stage" id="stage" style="padding-top:52px">
     <div class="sheet" id="sheet" aria-label="Paper"></div>
   </div>
 
@@ -145,7 +150,7 @@ textarea.sharebox { width: 100%; font: 14px/1.4 ui-monospace, monospace; border-
 
 <section class="howto" id="howto">
   <p><strong>This is a sheet of origami paper with a letter on each square.</strong> The front is white. The back is colored, and its letter shows in the little corner chip.</p>
-  <p>Tap a crease handle, then pick which side to fold over. A folded flap flips, so you see its <em>back</em> letters, in mirror order.</p>
+  <p>Tap a purple bar on the edge (a fold line), then pick which side to fold over. A folded flap flips, so you see its <em>back</em> letters, in mirror order.</p>
   <p><strong>Goal:</strong> make a real 5-letter word appear, left to right, in any row. Par is the fewest folds that can do it.</p>
   <button class="btn primary" id="gotIt" type="button">Start folding</button>
 </section>
@@ -257,6 +262,14 @@ function makePuzzle(word, seed, answerSet) {
     const letters = Array(W0 * H0 * 2).fill("");
     faces.forEach((f, i) => { letters[f] = word[i]; });
     for (let i = 0; i < letters.length; i++) if (!letters[i]) letters[i] = FREQ[Math.floor(r() * FREQ.length)];
+    // no giveaways: the word must not sit in any unfolded row, forward or backward, on either side
+    const rev = word.split("").reverse().join("");
+    let giveaway = false;
+    for (let y = 0; y < H0 && !giveaway; y++) for (const side of [0, 1]) {
+      let row = ""; for (let x = 0; x < W0; x++) row += letters[(y * W0 + x) * 2 + side];
+      if (row.includes(word) || row.includes(rev)) giveaway = true;
+    }
+    if (giveaway) continue;
     // validate: not visible at the start, findable, and no other answer word shows up first
     let par = -1, clash = false;
     explore(initialState(), MAX_DEPTH, (s, d) => {
@@ -272,11 +285,12 @@ function makePuzzle(word, seed, answerSet) {
   return null;
 }
 
-if (typeof module !== "undefined") module.exports = { initialState, applyFold, allFolds, visibleRows, findWord, explore, makePuzzle, W0, H0, LEN };
+if (typeof module !== "undefined") module.exports = { rng, initialState, applyFold, allFolds, visibleRows, findWord, explore, makePuzzle, W0, H0, LEN };
 
 const ANSWERS = "about above actor adopt adult after again agent agree ahead alarm album alert alien alive allow alone along amber among angel anger angle angry ankle apple apron arena argue arise armor arrow aside asset audio avoid awake award aware bacon badge bagel baker basic beach beard beast begin being bench berry birth black blade blame blank blast blend bless blind block bloom blown board boast bonus boost booth bound brain brave bread break brick bride brief bring broad brown brush buddy build bunch burst cabin cable camel candy canoe cargo carry catch cause cedar chain chair chalk charm chart chase cheap check cheek cheer chess chest chief child chili chill choir chord civic claim clamp clash class clean clear clerk click cliff climb clock close cloth cloud clown coach coast cocoa coral couch cough count court cover crane crash crazy cream crisp crowd crown crumb crust cubic curly curve cycle daily dairy dance dealt decal delta depth diary dizzy dodge donut doubt dough draft drain drama dream dress drift drink drive eager eagle early earth easel eight elbow elder empty enjoy enter equal error essay event every exact exist extra fable faint fairy faith false fancy feast fence ferry fever field fiery fifty final flame flash fleet float flock flood floor flour fluid flute focus foggy force forge forty frame fresh front frost fruit funny fuzzy gecko ghost giant given glass globe glory glove grace grade grain grand grape graph grass great green greet grill gross group guard guess guest guide habit happy harsh haste heart heavy hedge hello hippo hobby honey horse hotel house human humor hurry igloo image index input irony ivory jelly jewel joint jolly judge juice jumbo kayak kebab knife knock koala label laser laugh layer lemon level light lilac limit linen liver llama lobby local lodge logic loose lucky lunar lunch magic major mango maple march match mayor medal melon merry metal meter mimic minor mixer model money month moose motor mount mouse mouth movie muddy music nacho naval nerve never night ninja noble noise north novel nurse ocean offer often olive onion opera orbit order otter ought outer owner oxide paint panda panel paper party pasta patch peace peach pearl pedal penny perch phone photo piano pilot pinch pizza place plain plane plant plate plaza plump point polar porch pouch power press price pride prize proof proud prune pulse punch puppy purse quack queen query quest quick quiet quilt quirk quota quote radar radio rainy rally ranch range rapid raven reach react ready relax reply rhyme rider ridge right rival river roast robin robot rocky round route royal ruler rural salad sauce scale scarf scene scoop scout screw seven shade shake shape share shark sharp sheep shelf shell shine shiny shirt shock shore short shout shrub sight silly skate skill skirt skunk slate sleep slice slide slope small smart smile smoke snack snail snake sneak snowy solar solid sound south space spare spark speak speed spell spend spice spicy spike spill spine spoon sport spray squad stack staff stage stair stamp stand stare start state steam steel steep stick still stone stool storm story stove straw strip study style sugar sunny super swamp sweet swift swing sword table taste teach teeth thank theme thick thing think thorn three throw thumb tiger timer toast token topic torch total tower toxic track trade trail train treat trend trial tribe trick truck truly trunk trust truth tulip tuner twist ultra uncle under union unity upset urban usual vapor vault video vinyl viola virus visit vital vivid vocal voice wagon waltz watch water whale wheat wheel while whisk white whole witty woman world worry worth wrist write yacht yeast young youth zebra".split(" ");
 const ANSWER_SET = new Set(ANSWERS);
-const VERSION = "v3";
+const VERSION = "v4";
+const GEN = 2; // bump when the puzzle generator changes, so older saved sheets are replaced
 const LAUNCH = new Date(2026, 10, 4);
 
 const $ = id => document.getElementById(id);
@@ -288,11 +302,11 @@ const clone = o => JSON.parse(JSON.stringify(o));
 function buildRound(mode, day, word, seed) {
   let p = null, s = seed;
   while (!p) { p = makePuzzle(word, s, ANSWER_SET); s += 7919; }
-  return { mode, day, word, letters: p.letters, par: p.par, hist: [initialState()], won: false, hints: 0 };
+  return { mode, day, word, letters: p.letters, par: p.par, hist: [initialState()], won: false, hints: 0, gen: GEN };
 }
 function dailyRound() {
   const day = dayIndex(), saved = store("pleatword.day");
-  if (saved && saved.day === day && saved.mode === "daily" && Array.isArray(saved.hist)) return saved;
+  if (saved && saved.day === day && saved.mode === "daily" && Array.isArray(saved.hist) && saved.gen === GEN) return saved;
   return buildRound("daily", day, ORDER[((day % ORDER.length) + ORDER.length) % ORDER.length], 9000 + day);
 }
 function save() { store(S.mode === "daily" ? "pleatword.day" : "pleatword.bonus", S); }
@@ -330,6 +344,9 @@ function render() {
     for (let k = 1; k < st.w; k++) addCrease("v", k, G);
     for (let k = 1; k < st.h; k++) addCrease("h", k, G);
   }
+  const invite = !S.won && folds() === 0 && !sel;
+  sheet.classList.toggle("invite", invite);
+  if (invite) { const t = document.createElement("div"); t.className = "tag"; t.textContent = "↓ Tap a purple bar to fold"; t.style.cssText = "left:0;top:-52px"; sheet.appendChild(t); }
   if (sel) {
     const g = document.createElement("div"); g.className = "guide " + sel.axis;
     if (sel.axis === "v") g.style.cssText = `left:${sel.k * G.step - G.gap / 2 - 1}px;top:-8px;height:${G.H + 16}px`;
@@ -364,7 +381,7 @@ function renderChoices() {
   if (S.won) return;
   if (!sel) {
     const p = document.createElement("span"); p.className = "prompt";
-    p.textContent = folds() === 0 ? "Tap a crease handle (the little bars by the edges) to pick a fold line." : "Tap another crease handle to keep folding.";
+    p.textContent = folds() === 0 ? "The purple bars along the top and left edges are fold lines. Tap one to start." : "Tap another purple bar to keep folding.";
     box.appendChild(p); return;
   }
   const opts = sel.axis === "v"
@@ -467,7 +484,7 @@ window.addEventListener("resize", () => render());
 
 function start(data) {
   S = data && data.S ? clone(data.S) : dailyRound();
-  if (!Array.isArray(S.hist) || !S.letters) S = dailyRound();
+  if (!Array.isArray(S.hist) || !S.letters || S.gen !== GEN) S = dailyRound();
   if (store("pleatword.seenHelp")) $("howto").hidden = true;
   render();
 }

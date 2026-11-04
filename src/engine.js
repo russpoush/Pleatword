@@ -103,6 +103,14 @@ function makePuzzle(word, seed, answerSet) {
     const letters = Array(W0 * H0 * 2).fill("");
     faces.forEach((f, i) => { letters[f] = word[i]; });
     for (let i = 0; i < letters.length; i++) if (!letters[i]) letters[i] = FREQ[Math.floor(r() * FREQ.length)];
+    // no giveaways: the word must not sit in any unfolded row, forward or backward, on either side
+    const rev = word.split("").reverse().join("");
+    let giveaway = false;
+    for (let y = 0; y < H0 && !giveaway; y++) for (const side of [0, 1]) {
+      let row = ""; for (let x = 0; x < W0; x++) row += letters[(y * W0 + x) * 2 + side];
+      if (row.includes(word) || row.includes(rev)) giveaway = true;
+    }
+    if (giveaway) continue;
     // validate: not visible at the start, findable, and no other answer word shows up first
     let par = -1, clash = false;
     explore(initialState(), MAX_DEPTH, (s, d) => {
@@ -118,4 +126,4 @@ function makePuzzle(word, seed, answerSet) {
   return null;
 }
 
-if (typeof module !== "undefined") module.exports = { initialState, applyFold, allFolds, visibleRows, findWord, explore, makePuzzle, W0, H0, LEN };
+if (typeof module !== "undefined") module.exports = { rng, initialState, applyFold, allFolds, visibleRows, findWord, explore, makePuzzle, W0, H0, LEN };
