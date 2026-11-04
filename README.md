@@ -1,46 +1,40 @@
-# Squiggle
+# Foldle
 
-A daily word puzzle. Today's 5-letter word is drawn on a phone keyboard as the line your finger would make swipe-typing it. Guess the word in 6 tries.
+A daily folding word puzzle. You get a 7×3 sheet of two-sided origami paper with a letter on every square, front and back. Fold it along the creases until a hidden 5-letter word shows up, left to right, in a row.
 
 ## How it plays
 
-- The blue line starts at the dot and ends at the arrow. A small loop marks a double letter.
-- Tap keys (or type) to guess. Your guess draws its own dotted line so you can compare shapes.
-- Each stroke (letter to next letter) is scored on the bar between your tiles:
-  - green: right stroke in the right spot
-  - yellow: that stroke (either direction) appears elsewhere in the word
-  - grey: not in the word
-- After 3 misses, hollow dots mark each letter's key.
-- Everyone gets the same word each day. Puzzle #1 is Nov 3, 2026. Stats and streaks are kept in the browser's local storage.
-- Practice rounds use a random word and don't touch the streak.
+- The front of the paper is white and the back is colored. Each square's back letter shows in its corner chip.
+- Tap a crease handle, then pick which side folds over. The flap flips, so its back letters land in mirror order.
+- Win when the hidden word appears in any row. **Par** is the fewest folds that can do it.
+- **Hint** lights up the next fold on a shortest path from where you are.
+- Undo and Start over are always available. A fold that makes the sheet narrower than 5 squares is a dead end.
+- One shared sheet a day (puzzle #1 is Nov 4, 2026), plus unlimited bonus sheets that don't touch the streak.
+
+## How puzzles are made
+
+`src/engine.js` generates each sheet:
+
+1. Pick the hidden word (the daily word is a seeded shuffle of `data/answers.txt`).
+2. Fold a blank sheet 2–3 random times and write the word onto the faces that end up on top in one row.
+3. Fill every other face with common letters.
+4. Check every fold sequence up to 4 folds deep. Reject the sheet if the word is visible before folding, needs fewer than 2 folds, or if another answer word shows up as early as the real one. Par is the shortest solution found.
+
+The same seed always gives the same sheet, so everyone gets an identical daily puzzle without a server.
 
 ## Files
 
 | Path | What it is |
 |---|---|
-| `index.html` | The built, playable game. One self-contained file. Open it in a browser or host it anywhere (GitHub Pages works). |
-| `src/template.html` | Game source: markup, styles and script. Word lists are injected at build time. |
-| `data/answers.txt` | 614 hand-picked daily answers, all in ENABLE. The daily order is a seeded shuffle of this list. |
-| `data/valid-guesses.txt` | Words accepted as guesses: the 8,672 five-letter words in the public-domain ENABLE list. |
-| `data/extra-guesses.txt` | Newer everyday words ENABLE is missing (emoji, inbox, login...). Add your own here. |
-| `data/SOURCES.md` | Where each word list came from. |
-| `build.py` | Rebuilds `index.html` from the template and word lists. |
+| `index.html` | The built, playable game in one self-contained file. |
+| `src/engine.js` | Fold physics, solver and puzzle generator. Also loads in Node for testing. |
+| `src/template.html` | Page, styles and UI script. |
+| `data/answers.txt` | 614 common words used as hidden words. |
+| `build.py` | Builds `index.html`: `python3 build.py`. |
+| `archive/squiggle/` | The earlier Squiggle prototype, kept for reference. It turned out to be too close to an existing game (Keyboard Lines). |
 
-## Build
+## Tuning
 
-```bash
-python3 build.py
-```
-
-No dependencies beyond Python 3.
-
-## Changing things
-
-- **Answer list:** edit `data/answers.txt`, then rebuild. Changing it reshuffles the daily order, so do it before launch.
-- **Launch date:** `LAUNCH` in `src/template.html`.
-- **Hint timing:** search for `misses >= 3` in `src/template.html`.
-- **Curve shape:** `const t = 0.2` in `geometry()` sets the curve tension.
-
-## Word lists
-
-All word lists are free to use commercially. The guess list is ENABLE, which is in the public domain; see `data/SOURCES.md`. The build stops with an error if any daily answer is missing from the guess list.
+- Sheet size: `W0`, `H0` in `src/engine.js`.
+- Difficulty: fold count in `makePuzzle` (currently 2–3) and `par >= 2`.
+- Launch date: `LAUNCH` in `src/template.html`.
