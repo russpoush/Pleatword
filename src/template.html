@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Foldle</title>
+<title>Pleatword</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
@@ -110,7 +110,7 @@ textarea.sharebox { width: 100%; font: 14px/1.4 ui-monospace, monospace; border-
 <body>
 <div class="app">
   <header>
-    <h1><span class="corner" aria-hidden="true"></span>Foldle<span class="num" id="num">#1</span></h1>
+    <h1><span class="corner" aria-hidden="true"></span>Pleatword<span class="num" id="num">#1</span></h1>
     <button class="pill" id="helpBtn" type="button">How to play</button>
   </header>
 
@@ -154,7 +154,7 @@ textarea.sharebox { width: 100%; font: 14px/1.4 ui-monospace, monospace; border-
 __ENGINE__
 const ANSWERS = "__ANSWERS__".split(" ");
 const ANSWER_SET = new Set(ANSWERS);
-const VERSION = "v1";
+const VERSION = "v2";
 const LAUNCH = new Date(2026, 10, 4);
 
 const $ = id => document.getElementById(id);
@@ -169,11 +169,11 @@ function buildRound(mode, day, word, seed) {
   return { mode, day, word, letters: p.letters, par: p.par, hist: [initialState()], won: false, hints: 0 };
 }
 function dailyRound() {
-  const day = dayIndex(), saved = store("foldle.day");
+  const day = dayIndex(), saved = store("pleatword.day");
   if (saved && saved.day === day && saved.mode === "daily" && Array.isArray(saved.hist)) return saved;
   return buildRound("daily", day, ORDER[((day % ORDER.length) + ORDER.length) % ORDER.length], 9000 + day);
 }
-function save() { store(S.mode === "daily" ? "foldle.day" : "foldle.bonus", S); }
+function save() { store(S.mode === "daily" ? "pleatword.day" : "pleatword.bonus", S); }
 
 let S = null, sel = null, busy = false, hintFold = null, lastError = "";
 const cur = () => S.hist[S.hist.length - 1];
@@ -283,8 +283,8 @@ function doFold(f) {
 function win() {
   S.won = true;
   if (S.mode === "daily") {
-    const st = store("foldle.stats") || { played: 0, streak: 0, best: 0, last: null };
-    if (st.last !== S.day) { st.played++; st.streak = st.last === S.day - 1 ? st.streak + 1 : 1; st.best = Math.max(st.best, st.streak); st.last = S.day; store("foldle.stats", st); }
+    const st = store("pleatword.stats") || { played: 0, streak: 0, best: 0, last: null };
+    if (st.last !== S.day) { st.played++; st.streak = st.last === S.day - 1 ? st.streak + 1 : 1; st.best = Math.max(st.best, st.streak); st.last = S.day; store("pleatword.stats", st); }
   }
 }
 
@@ -293,7 +293,7 @@ function renderResult() {
   if (!S.won) return;
   const n = folds(), d = n - S.par;
   $("resultTitle").textContent = `${S.word.toUpperCase()} in ${n} fold${n === 1 ? "" : "s"}${d <= 0 ? ". Perfect!" : "."}`;
-  const st = store("foldle.stats");
+  const st = store("pleatword.stats");
   $("resultSub").textContent = (d <= 0 ? `You matched par (${S.par}).` : `Par was ${S.par}.`) + (S.hints ? ` ${S.hints} hint${S.hints > 1 ? "s" : ""} used.` : "") + (S.mode === "daily" && st ? ` Streak: ${st.streak}.` : "");
   $("shareBtn").hidden = S.mode !== "daily";
   $("nextBtn").textContent = S.mode === "daily" ? "Play another sheet" : "Next sheet";
@@ -330,14 +330,14 @@ $("undoBtn").addEventListener("click", () => safe(() => { if (folds() > 0 && !bu
 $("resetBtn").addEventListener("click", () => safe(() => { if (!busy) { S.hist = [initialState()]; sel = null; hintFold = null; save(); render(); } }));
 $("hintBtn").addEventListener("click", () => safe(hint));
 $("helpBtn").addEventListener("click", () => { $("howto").hidden = !$("howto").hidden; });
-$("gotIt").addEventListener("click", () => { $("howto").hidden = true; store("foldle.seenHelp", true); });
+$("gotIt").addEventListener("click", () => { $("howto").hidden = true; store("pleatword.seenHelp", true); });
 $("nextBtn").addEventListener("click", () => safe(() => {
-  let q = store("foldle.queue"); if (!Array.isArray(q) || !q.length) { q = ANSWERS.slice(); for (let i = q.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [q[i], q[j]] = [q[j], q[i]]; } }
-  const w = q.shift(); store("foldle.queue", q);
+  let q = store("pleatword.queue"); if (!Array.isArray(q) || !q.length) { q = ANSWERS.slice(); for (let i = q.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [q[i], q[j]] = [q[j], q[i]]; } }
+  const w = q.shift(); store("pleatword.queue", q);
   S = buildRound("bonus", dayIndex(), w, Math.floor(Math.random() * 1e9)); sel = null; hintFold = null; $("shareBox").hidden = true; save(); render();
 }));
 $("shareBtn").addEventListener("click", async () => {
-  const n = folds(), t = `Foldle #${S.day + 1}: ${n} fold${n === 1 ? "" : "s"} (par ${S.par})${S.hints ? ` · ${S.hints} hint` : ""}\n${"📄".repeat(Math.min(n, 10))}✨`;
+  const n = folds(), t = `Pleatword #${S.day + 1}: ${n} fold${n === 1 ? "" : "s"} (par ${S.par})${S.hints ? ` · ${S.hints} hint` : ""}\n${"📄".repeat(Math.min(n, 10))}✨`;
   try { await navigator.clipboard.writeText(t); toast("Copied. Paste it anywhere."); }
   catch (e) { const b = $("shareBox"); b.hidden = false; b.value = t; b.select(); }
 });
@@ -346,7 +346,7 @@ window.addEventListener("resize", () => render());
 function start(data) {
   S = data && data.S ? clone(data.S) : dailyRound();
   if (!Array.isArray(S.hist) || !S.letters) S = dailyRound();
-  if (store("foldle.seenHelp")) $("howto").hidden = true;
+  if (store("pleatword.seenHelp")) $("howto").hidden = true;
   render();
 }
 window.claude?.hot?.snapshot?.(() => ({ S }));

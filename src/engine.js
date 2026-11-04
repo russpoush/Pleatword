@@ -1,4 +1,4 @@
-// Foldle engine: two-sided paper, folds along creases, daily puzzle generation.
+// Pleatword engine: two-sided paper, folds along creases, daily puzzle generation.
 // A face is cell*2 + side (side 0 = front, 1 = back). A stack lists faces bottom -> top.
 // A state is { w, h, g } where g[y][x] is a stack (array of faces), or null for empty space.
 

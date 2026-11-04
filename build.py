@@ -1,4 +1,4 @@
-"""Build index.html (Foldle) from src/template.html, src/engine.js and data/answers.txt."""
+"""Build index.html (Pleatword) from src/template.html, src/engine.js and data/answers.txt."""
 from pathlib import Path
 
 root = Path(__file__).parent
