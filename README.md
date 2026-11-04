@@ -30,12 +30,13 @@ The same seed always gives the same sheet, so everyone gets an identical daily p
 | `src/engine.js` | Fold physics, solver and puzzle generator. Also loads in Node for testing. |
 | `src/template.html` | Page, styles and UI script. |
 | `data/answers.txt` | 614 common words used as hidden words. |
-| `build.py` | Builds `index.html`: `python3 build.py`. |
-| `archive/squiggle/` | The earlier Squiggle prototype, kept for reference. It turned out to be too close to an existing game (Keyboard Lines). |
+| `build.py` | Builds `index.html` and runs the name check: `python3 build.py`. |
+| `retired-names.txt` | Old or rejected names that must never appear in the game or its docs. The build stops if it finds one. |
+| `archive/` | An earlier, unrelated word-game prototype, kept for reference. Not part of Pleatword. |
 
 ## Name
 
-Pleatword was checked by an independent verifier on Nov 4, 2026. No games, App Store or Google Play apps, or pleatword.com were found with the name. The prototype was first called "Foldle," which is already taken by a different daily folding puzzle (foldle.app).
+Pleatword was checked by an independent verifier on Nov 4, 2026, and by hand in the Apple App Store, Google Play and for pleatword.com. No conflicts were found.
 
 ## Tuning
 

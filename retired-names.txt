@@ -1,0 +1,4 @@
+# Names this game must never use. One per line, case-insensitive.
+# The build fails if any of these appear outside archive/ and .git.
+foldle
+squiggle
