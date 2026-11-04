@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Pleatword</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root {
   /* Layout idea: a sheet of two-sided origami paper on a desk. White front, colored back. Fold controls sit on the crease lines. */
@@ -19,7 +20,7 @@
   --muted: #687083;
   --line: #c9ced9;
   --good: #16a34a;
-  --display: "Syne", "Avenir Next", system-ui, sans-serif;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
   --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   color-scheme: light;
 }
@@ -154,7 +155,7 @@ textarea.sharebox { width: 100%; font: 14px/1.4 ui-monospace, monospace; border-
 __ENGINE__
 const ANSWERS = "__ANSWERS__".split(" ");
 const ANSWER_SET = new Set(ANSWERS);
-const VERSION = "v2";
+const VERSION = "v3";
 const LAUNCH = new Date(2026, 10, 4);
 
 const $ = id => document.getElementById(id);
